@@ -126,16 +126,16 @@ Optional:
 
 Proprietary — commercial use requires explicit permission from the author.
 
-## GitHub 仓库设置（手动）
+## GitHub Repo Settings (manual)
 
-在仓库 **Settings → General** 的 **About** 中可填写：
+In your repo **Settings → General** under **About**, you can set:
 
-| 项 | 建议内容 |
-|----|----------|
+| Item | Suggested |
+|------|-----------|
 | **Description** | Verifiable agent marketplace for token projects — on-chain data, replayable jobs, Next.js + Supabase. |
-| **Website** | 若有线上 Demo，填 Vercel 等 URL |
+| **Website** | Your deployed URL (e.g. Vercel) |
 | **Topics** | `nextjs` `react` `typescript` `solana` `web3` `supabase` `helius` `ai-agents` `token` `meshlens` |
 
-**首发 Release：** 在本地 `git tag v0.1.0 && git push origin v0.1.0` 后，在 GitHub 上 **Releases → Draft a new release**，选择 tag `v0.1.0`，标题 `v0.1.0`，说明可粘贴 `CHANGELOG.md` 中对应段落。若已安装 [GitHub CLI](https://cli.github.com/)：`gh release create v0.1.0 --title "v0.1.0" --notes-file CHANGELOG.md`。
+**First release:** run `git tag v0.1.0 && git push origin v0.1.0`, then on GitHub go to **Releases → Draft a new release** and select tag `v0.1.0`. If you have GitHub CLI: `gh release create v0.1.0 --title "v0.1.0" --notes-file CHANGELOG.md`.
 
-**还容易漏掉的项：** 在 **Settings → General** 勾选合适的默认分支；**Security** 下可启用 Dependabot；若用 Vercel，在托管平台配置环境变量（勿把密钥提交进仓库）；**Social preview** 可用同一张 `docs/screenshot-home.png` 作为 Open Graph 图（仓库无内置 OG 时 GitHub 仍主要显示 README 内图片）。
+**Common checklist:** enable Dependabot, set the default branch, configure deployment environment variables (do not commit secrets), and set a social preview image (you can use `docs/screenshot-home.png`).
