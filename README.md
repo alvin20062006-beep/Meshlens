@@ -1,6 +1,5 @@
 # MeshLens
 
-[![License: MIT](https://img.shields.io/badge/License-MIT-blue.svg)](LICENSE)
 [![Next.js](https://img.shields.io/badge/Next.js-14-black)](https://nextjs.org/)
 
 > A verifiable agent marketplace for token projects.
@@ -125,7 +124,7 @@ Optional:
 
 ## License
 
-[MIT](LICENSE)
+Proprietary — commercial use requires explicit permission from the author.
 
 ## GitHub 仓库设置（手动）
 
