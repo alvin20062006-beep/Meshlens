@@ -126,16 +126,16 @@ Optional:
 
 Proprietary — commercial use requires explicit permission from the author.
 
-## GitHub Repo Settings (manual)
+## GitHub Repository Settings (manual)
 
-In your repo **Settings → General** under **About**, you can set:
+In **Settings → General** → **About**, you may want to set:
 
-| Item | Suggested |
+| Field | Suggested |
 |------|-----------|
 | **Description** | Verifiable agent marketplace for token projects — on-chain data, replayable jobs, Next.js + Supabase. |
-| **Website** | Your deployed URL (e.g. Vercel) |
+| **Website** | Your hosted demo URL (e.g. Vercel) |
 | **Topics** | `nextjs` `react` `typescript` `solana` `web3` `supabase` `helius` `ai-agents` `token` `meshlens` |
 
-**First release:** run `git tag v0.1.0 && git push origin v0.1.0`, then on GitHub go to **Releases → Draft a new release** and select tag `v0.1.0`. If you have GitHub CLI: `gh release create v0.1.0 --title "v0.1.0" --notes-file CHANGELOG.md`.
+**First release:** after `git tag v0.1.0 && git push origin v0.1.0`, go to **Releases → Draft a new release**, choose tag `v0.1.0`, title `v0.1.0`, and paste notes from `CHANGELOG.md`. If you use GitHub CLI: `gh release create v0.1.0 --title "v0.1.0" --notes-file CHANGELOG.md`.
 
-**Common checklist:** enable Dependabot, set the default branch, configure deployment environment variables (do not commit secrets), and set a social preview image (you can use `docs/screenshot-home.png`).
+**Other suggestions:** enable Dependabot; configure environment variables in your hosting platform (do not commit secrets); optionally set `docs/screenshot-home.png` as the social preview image.
