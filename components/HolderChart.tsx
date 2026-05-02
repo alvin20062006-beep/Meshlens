@@ -41,8 +41,10 @@ export function HolderChart({ accounts }: Props) {
               background: "var(--surface)",
               border: "1px solid var(--border)",
               borderRadius: 12,
-              color: "var(--text-primary)",
+              color: "#ffffff",
             }}
+            itemStyle={{ color: "#ffffff" }}
+            labelStyle={{ color: "#ffffff" }}
             formatter={(v: unknown, _name: unknown, item: unknown) => {
               const pct = typeof v === "number" ? v : Number(v)
               const rec = item && typeof item === "object" ? (item as Record<string, unknown>) : null

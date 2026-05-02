@@ -73,13 +73,17 @@ export default function JobPage({ params }: Props) {
         const jobId = result?.job_id ? String(result.job_id) : ""
         if (!jobId) throw new Error("Missing job_id in response")
 
-        if (cancelled) return
+        // Always navigate on success. Do not gate on `cancelled`: in React 18 dev Strict Mode
+        // the effect cleanup runs before the fetch resolves, which sets cancelled=true and
+        // would skip router.replace even though the job completed (History would still show it).
         try {
           sessionStorage.setItem(`meshlens_job_${jobId}`, JSON.stringify(result))
         } catch {
           // ignore
         }
-        setVisibleLogs((prev) => [...prev, { at: Date.now(), text: "Complete." }])
+        if (!cancelled) {
+          setVisibleLogs((prev) => [...prev, { at: Date.now(), text: "Complete." }])
+        }
         router.replace(`/result/${jobId}`)
       } catch (e: unknown) {
         if (cancelled) return
