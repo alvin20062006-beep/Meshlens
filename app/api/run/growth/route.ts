@@ -3,7 +3,7 @@ import type { Project } from "@/lib/types"
 import { checkRateLimit, getClientIP } from "@/lib/ratelimit"
 import { callLLM, parseJSONResponse } from "@/lib/llm"
 import { isLegacyPlaceholderProjectId } from "@/lib/demo-connect"
-import { createJob, saveProject, updateJob } from "@/lib/supabase"
+import { createJob, saveProject, updateJob } from "@/lib/supabase-server"
 
 function asRecord(v: unknown): Record<string, unknown> | null {
   return v && typeof v === "object" ? (v as Record<string, unknown>) : null
@@ -27,23 +27,6 @@ async function resolveProjectId(project: Project): Promise<string> {
   return String(res.data.id)
 }
 
-function fallbackPlan(projectName: string, holder_context_used: boolean) {
-  return {
-    days: Array.from({ length: 7 }).map((_, i) => ({
-      day: i + 1,
-      theme: `Day ${i + 1}: Execution`,
-      actions: [
-        "Publish a concise update with a clear call-to-action",
-        "Run 1 community activation loop (AMA / spaces / thread)",
-        "Review metrics and iterate the next day's message",
-      ],
-      metric: "Daily active community interactions",
-    })),
-    summary: `7-day plan for ${projectName}`,
-    holder_context_used,
-  }
-}
-
 export async function POST(req: Request) {
   // Rate limit check first
   const ip = getClientIP(req)
@@ -54,7 +37,7 @@ export async function POST(req: Request) {
 
   const missing: string[] = []
   if (!process.env.NEXT_PUBLIC_SUPABASE_URL || !process.env.SUPABASE_SERVICE_ROLE_KEY) missing.push("SUPABASE")
-  // LLM optional (fallback)
+  if (!process.env.LLM_API_KEY || !process.env.LLM_MODEL) missing.push("LLM")
   if (missing.length) {
     return NextResponse.json({ error: "Missing configuration", details: missing }, { status: 400 })
   }
@@ -106,11 +89,11 @@ export async function POST(req: Request) {
     `(mark as unavailable if not provided, still generate plan). ` +
     `Return JSON: { days: [{ day: number, theme: string, actions: string[], metric: string }], summary: string, holder_context_used: boolean }`
 
-  let output: object = fallbackPlan(project.name || "Project", holder_context_used)
+  let output: object | null = null
   let llmError: string | null = null
 
   try {
-    const llm = await callLLM({ system, user, maxTokens: 1200 })
+    const llm = await callLLM({ system, user, maxTokens: 1200, jsonObject: true })
     if (!llm.success) {
       llmError = llm.error || "LLM failed"
     } else {
@@ -126,7 +109,18 @@ export async function POST(req: Request) {
     llmError = e instanceof Error ? e.message : "LLM exception"
   }
 
-  // Never fail: always complete with best-effort output
+  if (llmError || !output) {
+    await updateJob(job_id, {
+      status: "failed",
+      error: llmError || "LLM failed",
+      data_snapshot: {
+        holder_context: { top5_percent: top5, top10_percent: top10, holder_context_used },
+        llm_error: llmError,
+      },
+    })
+    return NextResponse.json({ error: llmError || "LLM failed", job_id }, { status: 502 })
+  }
+
   const job = {
     job_id,
     agent_id: "growth_strategist_v1",
@@ -134,19 +128,21 @@ export async function POST(req: Request) {
     input,
     data_snapshot: {
       holder_context: { top5_percent: top5, top10_percent: top10, holder_context_used },
-      llm_error: llmError,
+      llm_error: null,
     },
     output,
     status: "completed",
     timestamp,
   }
 
-  await updateJob(job_id, {
+  const updateResult = await updateJob(job_id, {
     status: "completed",
     output,
     data_snapshot: job.data_snapshot ?? undefined,
-    error: llmError ?? undefined,
   })
+  if (updateResult.error) {
+    console.error("[JOB]", job_id, "updateJob failed:", updateResult.error.message, updateResult.error)
+  }
 
   console.log("[JOB]", job_id, "growth_strategist_v1", "completed")
 

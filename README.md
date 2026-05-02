@@ -8,9 +8,7 @@
 
 ## Preview
 
-Product landing page (`/`):
-
-![MeshLens home page](docs/screenshot-home.png)
+Landing page is `/`. Optional product screenshot path used by maintainers: `docs/screenshot-home.png` (add locally if you want the image to render in this README).
 
 ## What is MeshLens?
 
@@ -18,50 +16,88 @@ Not a launchpad. Not a terminal. An execution layer.
 
 Turns real on-chain project data into verifiable, replayable agent outputs.
 
-## Key Features
+## Current status
 
-- Project-Bound: Bags-verified projects only
-- Data-Verified: all outputs cite real on-chain sources
-- Replayable: every job stored in Supabase as auditable snapshot
-- Agent Marketplace: extensible registry with importable manifests
-- LLM-Agnostic: works with any OpenAI-compatible provider
+- **Runnable agents:** `holder_insight_v1` (holder distribution + analysis) and `growth_strategist_v1` (7-day growth plan) via `POST /api/run/[agentId]`.
+- **Registry only:** other agents in the marketplace (e.g. preview/coming soon) are listed but do not start a run until marked `active`.
+- **Import agent:** JSON import stores agents in the in-memory registry as “Coming Soon” (not a full custom execution pipeline).
+- **Connect:** no demo-project shortcut in the UI; `POST /api/connect` requires a configured **Bags** API key to resolve a project (URL or mint). Legacy client state may still use placeholder slugs `demo` / `test` until a real project is stored.
+- **Supabase:** jobs and projects are stored for history/replay; production should use RLS and stricter policies (see **Security** below).
+
+## Key features
+
+- **Project-bound:** connect flow resolves projects through the Bags API when configured.
+- **Data-cited:** agents use on-chain sources (e.g. Helius, Solana RPC) with structured outputs and citation metadata where applicable.
+- **Replayable:** job rows in Supabase support “same job / same snapshot” style auditing.
+- **Extensible UI:** marketplace lists built-in and imported agent metadata.
+- **LLM-agnostic:** any OpenAI-compatible provider via `LLM_PROVIDER` / `LLM_API_KEY` / `LLM_MODEL` (see `LLM.md`).
 
 ## Architecture
 
-UI (Next.js) → Agent Marketplace → API Routes → Execution Engine  
-↓ Bags + Helius + LLM Provider  
-↓ Supabase
+UI (Next.js) → Marketplace & pages → API routes → Helius / Solana / LLM  
+→ Supabase (projects + jobs)
 
-## Data Sources
+## Data sources
 
 | Data | Source |
 |------|--------|
-| Project identity | Bags SDK/API |
-| Holder distribution | Helius DAS getTokenAccounts |
-| Token supply | Solana RPC getTokenSupply |
-| Analysis | Configurable LLM provider |
+| Project identity | Bags API (when `BAGS_API_KEY` is set) |
+| Holder distribution | Helius DAS / RPC helpers in API routes |
+| Token supply | Solana RPC (`getTokenSupply`) |
+| Analysis text | Configurable OpenAI-compatible LLM |
 | Job storage | Supabase |
 
 ## Setup
 
-1. Clone repo
+1. Clone the repo.
 2. `cp .env.example .env.local`
-3. Fill in all env vars
-4. Create Supabase tables (see schema below)
+3. Fill in variables (see below). **Never commit** `.env.local` or real keys.
+4. Create Supabase tables (schema below).
 5. `npm install`
-6. `npm run dev`
+6. `npm run dev` (default dev server port **3333**)
 
-## API Routes
+## API routes
 
-- `POST /api/connect` — resolve project slug (Bags when `BAGS_API_KEY` is set; demo slugs `demo`/`test` when demo connect is on — default on, set `NEXT_PUBLIC_DEMO_CONNECT=false` to disable)
-- `POST /api/run/[agentId]` — run an agent by id
-  - `holder_insight_v1` → holder distribution snapshot + analysis
-  - `growth_strategist_v1` → 7-day growth plan
+- `POST /api/connect` — resolve a Bags project from slug URL or mint (requires `BAGS_API_KEY`).
+- `POST /api/run/[agentId]` — run an agent (`holder_insight_v1`, `growth_strategist_v1`).
 
-## Supabase Schema
+## Environment variables
+
+**Public (embedded in the browser bundle)** — safe only for values meant to be public:
+
+| Variable | Purpose |
+|----------|---------|
+| `NEXT_PUBLIC_SUPABASE_URL` | Supabase project URL |
+| `NEXT_PUBLIC_SUPABASE_ANON_KEY` | Supabase **anon** key (designed for frontend use with RLS) |
+| `NEXT_PUBLIC_DEMO_CONNECT` | Legacy flag; demo UI removed — leave empty or `false` |
+
+**Server-only secrets** — used in API routes / server code only; must not be prefixed with `NEXT_PUBLIC_`:
+
+| Variable | Purpose |
+|----------|---------|
+| `SUPABASE_SERVICE_ROLE_KEY` | Service role key (bypasses RLS). **Never expose to the client.** |
+| `HELIUS_API_KEY` | Helius API (holder insight / DAS). |
+| `LLM_API_KEY` | LLM provider API key. |
+| `LLM_MODEL` | Model id for the chosen provider. |
+| `LLM_PROVIDER` | Optional provider id (`moonshot`, `openai`, …) or base URL — see `LLM.md`. |
+| `BAGS_API_KEY` | Bags public API key for `/api/connect`. |
+
+Apply for provider keys yourself (Helius, Bags, LLM vendor, Supabase). This repo ships **no** third-party secrets.
+
+## Scripts
+
+| Command | Notes |
+|---------|--------|
+| `npm run dev` | Dev server on port 3333 |
+| `npm run build` | Production build |
+| `npm run start` | Start production server on 3333 |
+| `npm run lint` | ESLint via Next.js |
+
+There is **no** `npm test`, `npm run typecheck`, or `test:e2e` script in this package (not defined).
+
+## Supabase schema
 
 ```sql
--- Projects table
 create table if not exists public.projects (
   id uuid primary key default gen_random_uuid(),
   slug text unique not null,
@@ -73,7 +109,6 @@ create table if not exists public.projects (
   updated_at timestamptz not null default now()
 );
 
--- Jobs table
 create table if not exists public.jobs (
   id text primary key,
   agent_id text not null,
@@ -91,51 +126,16 @@ create index if not exists idx_jobs_created_at on public.jobs(created_at desc);
 create index if not exists idx_jobs_project_id on public.jobs(project_id);
 ```
 
-## Demo Flow
+## Security / RLS
 
-1. Enter Bags project URL → verified badge (requires `BAGS_API_KEY` unless using optional demo mode)
-2. Select Holder Insight Agent → Run
-3. View results with citations
-4. History → Replay same job → identical result
-5. Import custom agent JSON → appears as coming soon
-
-**Demo connect** is on by default: slugs `demo` / `test` work without Bags, and `/connect` shows “Use Demo Project”. Set `NEXT_PUBLIC_DEMO_CONNECT=false` for Bags-only deployments.
-
-## Security / RLS Note
-
-- For the demo version, keep Supabase configuration simple enough for the app to run
-- Production deployments should add proper Row Level Security (RLS) policies and stricter access controls
-
-## Environment Variables
-
-Required:
-
-- `NEXT_PUBLIC_SUPABASE_URL`
-- `NEXT_PUBLIC_SUPABASE_ANON_KEY`
-- `SUPABASE_SERVICE_ROLE_KEY`
-- `HELIUS_API_KEY` (required for holder insight on-chain fetch)
-- `LLM_API_KEY` / `LLM_MODEL` (optional; analysis will fall back if missing)
-- `LLM_PROVIDER` (optional base URL for your OpenAI-compatible provider)
-
-Optional:
-
-- `BAGS_API_KEY` (enables Bags lookup for real projects)
-- `NEXT_PUBLIC_DEMO_CONNECT` (set to `false` to disable demo slugs and the demo button; omit or any value except `false` keeps demo on)
+- The anon key is expected in the browser; protect tables with **RLS** appropriate for your threat model.
+- The **service role** key must only run on the server (this codebase keeps it in API routes via `lib/supabase-server.ts`).
+- Add stronger RLS and network controls for production.
 
 ## License
 
 Proprietary — commercial use requires explicit permission from the author.
 
-## GitHub Repository Settings (manual)
+## GitHub repository settings (optional)
 
-In **Settings → General** → **About**, you may want to set:
-
-| Field | Suggested |
-|------|-----------|
-| **Description** | Verifiable agent marketplace for token projects — on-chain data, replayable jobs, Next.js + Supabase. |
-| **Website** | Your hosted demo URL (e.g. Vercel) |
-| **Topics** | `nextjs` `react` `typescript` `solana` `web3` `supabase` `helius` `ai-agents` `token` `meshlens` |
-
-**First release:** after `git tag v0.1.0 && git push origin v0.1.0`, go to **Releases → Draft a new release**, choose tag `v0.1.0`, title `v0.1.0`, and paste notes from `CHANGELOG.md`. If you use GitHub CLI: `gh release create v0.1.0 --title "v0.1.0" --notes-file CHANGELOG.md`.
-
-**Other suggestions:** enable Dependabot; configure environment variables in your hosting platform (do not commit secrets); optionally set `docs/screenshot-home.png` as the social preview image.
+In **Settings → General → About**, you may set description, website URL, and topics (e.g. `nextjs`, `solana`, `supabase`, `meshlens`). For releases, tag (e.g. `v0.1.0`) and draft a release using `CHANGELOG.md` if desired.

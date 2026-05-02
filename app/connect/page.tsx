@@ -5,17 +5,18 @@ import { useUIStore } from "@/lib/store"
 import type { Project } from "@/lib/types"
 import { ProjectBadge } from "@/components/ProjectBadge"
 
-const demoConnectEnabled = process.env.NEXT_PUBLIC_DEMO_CONNECT !== "false"
-
 function parseSlug(input: string): string {
   const s = (input || "").trim()
   if (!s) return ""
   try {
     const u = new URL(s)
     const parts = u.pathname.split("/").filter(Boolean)
-    return parts[0] || ""
+    const raw = parts[0] || ""
+    // Solana mints are base58; users sometimes paste accidental spaces in the URL segment.
+    return raw.replace(/\s+/g, "")
   } catch {
-    return s.replace(/^\/+/, "").split("/")[0] || ""
+    const raw = s.replace(/^\/+/, "").split("/")[0] || ""
+    return raw.replace(/\s+/g, "")
   }
 }
 
@@ -40,7 +41,13 @@ export default function ConnectPage() {
       })
       if (!res.ok) {
         const t = await res.text()
-        setError(t || "Failed to connect")
+        try {
+          const j = JSON.parse(t) as { error?: unknown }
+          const msg = typeof j?.error === "string" ? j.error : ""
+          setError(msg || t || "Failed to connect")
+        } catch {
+          setError(t || "Failed to connect")
+        }
         return
       }
       const data = (await res.json()) as Project
@@ -53,42 +60,18 @@ export default function ConnectPage() {
     }
   }
 
-  async function onUseDemo() {
-    setError(null)
-    setLoading(true)
-    try {
-      const res = await fetch("/api/connect", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ slug: "demo" }),
-      })
-      if (!res.ok) {
-        const t = await res.text()
-        setError(t || "Failed to connect demo")
-        return
-      }
-      const data = (await res.json()) as Project
-      setProject(data)
-    } catch (e: unknown) {
-      const msg = e instanceof Error ? e.message : "Failed to connect demo"
-      setError(msg)
-    } finally {
-      setLoading(false)
-    }
-  }
-
   return (
     <main className="mx-auto w-full max-w-3xl p-6">
       <div className="ml-card">
         <h1 className="text-2xl font-semibold">Connect Your Project</h1>
         <p className="mt-2 text-sm text-[color:var(--text-secondary)]">
-          Paste a Bags project URL to resolve its mint.
+          Paste a Bags project URL (works best for recent Bags launches). If it fails, paste the token mint address.
         </p>
 
         <div className="mt-6 flex flex-col gap-3">
           <input
             className="ml-input h-11 w-full px-3 text-sm"
-            placeholder="https://bags.fm/your-project"
+            placeholder="https://bags.fm/your-project or token mint address"
             value={url}
             onChange={(e) => setUrl(e.target.value)}
           />
@@ -102,20 +85,6 @@ export default function ConnectPage() {
             {loading ? "Connecting..." : "Connect Project"}
           </button>
         </div>
-
-        {demoConnectEnabled ? (
-          <>
-            <div className="my-6 flex items-center gap-3">
-              <div className="h-px flex-1 bg-[color:var(--border)]" />
-              <div className="text-xs text-[color:var(--text-secondary)]">or</div>
-              <div className="h-px flex-1 bg-[color:var(--border)]" />
-            </div>
-
-            <button type="button" className="ml-btn-secondary h-11 w-full text-sm" onClick={onUseDemo} disabled={loading}>
-              Use Demo Project
-            </button>
-          </>
-        ) : null}
 
         {error ? (
           <div className="mt-4 rounded-lg border border-[color:var(--border)] bg-[color:var(--bg)] p-3 text-xs text-[color:var(--error)]">

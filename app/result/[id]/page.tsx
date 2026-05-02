@@ -85,14 +85,25 @@ export default function ResultPage({ params }: Props) {
       setLoading(true)
       setNotFound(false)
 
-      // Prefer Supabase
+      // Prefer Supabase, but fall back to sessionStorage if output is missing
       try {
         const { data, error } = await getJob(job_id)
         if (!cancelled) {
           if (error || !data) {
             throw new Error(error?.message || "Supabase fetch failed")
           }
-          setJob(toJobFromSupabaseRow(data))
+          const fromSupabase = toJobFromSupabaseRow(data)
+          // If Supabase row has no output (e.g. updateJob failed silently or schema mismatch),
+          // prefer the sessionStorage snapshot which always carries the full API response.
+          if (!fromSupabase.output) {
+            const cached = readSessionSnapshot(job_id)
+            if (cached?.output) {
+              setJob(cached)
+              setLoading(false)
+              return
+            }
+          }
+          setJob(fromSupabase)
           setLoading(false)
           return
         }
