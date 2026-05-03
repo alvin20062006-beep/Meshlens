@@ -6,10 +6,6 @@
 
 **Repository:** [github.com/alvin20062006-beep/Meshlens](https://github.com/alvin20062006-beep/Meshlens)
 
-## Preview
-
-Product landing page (`/`):
-
 ![MeshLens home page](docs/screenshot-home.png)
 
 ## What is MeshLens?
