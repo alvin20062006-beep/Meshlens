@@ -8,7 +8,9 @@
 
 ## Preview
 
-Landing page is `/`. Optional product screenshot path used by maintainers: `docs/screenshot-home.png` (add locally if you want the image to render in this README).
+Product landing page (`/`):
+
+![MeshLens home page](docs/screenshot-home.png)
 
 ## What is MeshLens?
 
