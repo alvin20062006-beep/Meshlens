@@ -132,7 +132,7 @@ create index if not exists idx_jobs_project_id on public.jobs(project_id);
 
 ## License
 
-Proprietary — commercial use requires explicit permission from the author.
+[MIT](LICENSE) — see the `LICENSE` file in this repository.
 
 ## GitHub repository settings (optional)
 
