@@ -134,6 +134,3 @@ create index if not exists idx_jobs_project_id on public.jobs(project_id);
 
 [MIT](LICENSE) — see the `LICENSE` file in this repository.
 
-## GitHub repository settings (optional)
-
-In **Settings → General → About**, you may set description, website URL, and topics (e.g. `nextjs`, `solana`, `supabase`, `meshlens`). For releases, tag (e.g. `v0.1.0`) and draft a release using `CHANGELOG.md` if desired.
